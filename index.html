@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- This makes the page work well on phones and laptops. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- This is the title shown in the browser tab. -->
+  <title>Stock Dashboard</title>
+  <!-- This loads Chart.js from a CDN. -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <!-- This contains all the page styling. -->
+  <style>
+    :root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#667085;--border:#e5e7eb;--primary:#2563eb;--primary-dark:#1d4ed8;--green:#16a34a;--red:#dc2626;--shadow:0 4px 18px rgba(15,23,42,.07)}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+    .container{width:min(1400px,94%);margin:auto;padding:24px 0 30px} header{margin-bottom:20px} header h1{margin:0;font-size:clamp(26px,4vw,38px)} header p{margin:5px 0 0;color:var(--muted)}
+    /* This creates the input control card. */
+    .control-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
+    .input-grid{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}
+    input[type=text],input[type=password],input[type=date]{width:100%;padding:11px 12px;border:1px solid #d1d5db;border-radius:9px;font-size:15px;background:#fff;color:var(--text)}
+    input:focus{outline:2px solid rgba(37,99,235,.18);border-color:var(--primary)} .password-wrap{position:relative}.password-wrap input{padding-right:78px}
+    .show-hide{position:absolute;right:6px;top:5px;bottom:5px;border:0;background:#eef2ff;color:var(--primary);border-radius:6px;padding:0 10px;cursor:pointer;font-weight:700}
+    button{border:0;border-radius:9px;padding:11px 15px;font-size:14px;font-weight:700;cursor:pointer;transition:.15s ease} button:hover{transform:translateY(-1px)}
+    .primary-btn{background:var(--primary);color:white}.primary-btn:hover{background:var(--primary-dark)} .secondary-btn{background:#eef2f7;color:#344054}
+    .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}.chip{background:#f1f5f9;border:1px solid #e2e8f0;color:#334155;padding:7px 11px;border-radius:999px;font-size:13px;cursor:pointer}
+    .remember{display:flex;align-items:center;gap:7px;margin-top:10px;font-size:13px;color:#475467}.note{margin:9px 0 0;color:var(--muted);font-size:12px}.note a{color:var(--primary)}
+    /* This shows API status and call count. */
+    .status-row{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;margin:14px 0;padding:11px 14px;background:#fff;border:1px solid var(--border);border-radius:10px}
+    #status{font-weight:600}#apiCount{color:var(--muted);font-weight:600}.error{color:var(--red)}.success{color:var(--green)}
+    /* This creates the date filtering section. */
+    .filter-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end}.quick-buttons{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+    .quick-btn{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0;padding:7px 11px}.quick-btn.active{background:#dbeafe;color:#1d4ed8;border-color:#93c5fd}
+    /* This creates the KPI card grid. */
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0}.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px;box-shadow:var(--shadow)}
+    .kpi-title{color:var(--muted);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}.kpi-value{margin-top:5px;font-size:22px;font-weight:800}
+    /* This creates the chart grid. */
+    .chart-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}.chart-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow);min-height:320px}
+    .chart-card h3{margin:0 0 10px;font-size:16px}.chart-box{position:relative;height:260px}
+    /* This styles the weekly data table. */
+    .table-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-top:16px;box-shadow:var(--shadow)}
+    .table-header{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}.table-header h2{margin:0;font-size:18px}.table-scroll{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;min-width:850px}th,td{padding:9px 10px;border-bottom:1px solid var(--border);text-align:right;font-size:13px;white-space:nowrap}
+    th:first-child,td:first-child{text-align:left}th{background:#f8fafc;color:#475467}.positive{color:var(--green);font-weight:700}.negative{color:var(--red);font-weight:700}
+    footer{text-align:center;color:var(--muted);font-size:12px;padding-top:25px}
+    /* This makes the dashboard responsive on smaller screens. */
+    @media(max-width:900px){.input-grid,.filter-row{grid-template-columns:1fr}.kpi-grid{grid-template-columns:repeat(2,1fr)}.chart-grid{grid-template-columns:1fr}}
+    /* This makes the dashboard easier to use on phones. */
+    @media(max-width:520px){.container{width:92%}.kpi-grid{grid-template-columns:1fr 1fr}.kpi-value{font-size:18px}.chart-card{min-height:300px}.chart-box{height:240px}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- This is the dashboard heading. -->
+    <header><h1>Stock Dashboard</h1><p>Weekly stock analysis using Alpha Vantage.</p></header>
+
+    <!-- This contains the stock symbol and API key controls. -->
+    <section class="control-card">
+      <div class="input-grid">
+        <!-- This lets the user enter a stock symbol. -->
+        <div class="field"><label for="symbol">Stock symbol</label><input type="text" id="symbol" placeholder="Example: IBM" autocomplete="off"></div>
+        <!-- This lets the user enter the Alpha Vantage key. -->
+        <div class="field"><label for="apiKey">Alpha Vantage API key</label><div class="password-wrap"><input type="password" id="apiKey" placeholder="Enter your API key" autocomplete="off"><button type="button" class="show-hide" id="toggleKey">Show</button></div></div>
+        <!-- This is the main API loading button. -->
+        <button type="button" class="primary-btn" id="loadBtn">Load</button>
+      </div>
+      <!-- These chips only fill the symbol box. -->
+      <div class="chips"><button class="chip" data-symbol="IBM">IBM</button><button class="chip" data-symbol="RELIANCE.BSE">RELIANCE.BSE</button><button class="chip" data-symbol="TCS.BSE">TCS.BSE</button><button class="chip" data-symbol="INFY.BSE">INFY.BSE</button></div>
+      <!-- This controls whether the key is saved locally. -->
+      <label class="remember"><input type="checkbox" id="rememberKey"> Remember key on this device</label>
+      <!-- This explains how the API key is handled. -->
+      <p class="note">Your key stays in your browser. Get a free key at <a href="https://www.alphavantage.co/support/#api-key" target="_blank" rel="noopener noreferrer">alphavantage.co/support/#api-key</a></p>
+    </section>
+
+    <!-- This shows data source status and daily API usage. -->
+    <div class="status-row"><div id="status">Enter a symbol and API key, then click Load.</div><div id="apiCount">API calls used today: 0 of 25.</div></div>
+
+    <!-- This contains date filters and quick date buttons. -->
+    <section class="control-card">
+      <div class="filter-row">
+        <!-- This is the starting date filter. -->
+        <div class="field"><label for="fromDate">From</label><input type="date" id="fromDate"></div>
+        <!-- This is the ending date filter. -->
+        <div class="field"><label for="toDate">To</label><input type="date" id="toDate"></div>
+        <!-- This forces a new API request. -->
+        <button type="button" class="secondary-btn" id="refreshBtn">Refresh from API</button>
+      </div>
+      <!-- These buttons change dates only in the browser. -->
+      <div class="quick-buttons"><button class="quick-btn" data-range="3M">3M</button><button class="quick-btn" data-range="6M">6M</button><button class="quick-btn active" data-range="1Y">1Y</button><button class="quick-btn" data-range="3Y">3Y</button><button class="quick-btn" data-range="5Y">5Y</button><button class="quick-btn" data-range="YTD">YTD</button><button class="quick-btn" data-range="Max">Max</button></div>
+    </section>
+
+    <!-- This displays the calculated KPI values. -->
+    <section class="kpi-grid">
+      <div class="kpi"><div class="kpi-title">Latest adjusted close</div><div class="kpi-value" id="kpiClose">—</div></div>
+      <div class="kpi"><div class="kpi-title">Period return</div><div class="kpi-value" id="kpiReturn">—</div></div>
+      <div class="kpi"><div class="kpi-title">Highest high</div><div class="kpi-value" id="kpiHigh">—</div></div>
+      <div class="kpi"><div class="kpi-title">Lowest low</div><div class="kpi-value" id="kpiLow">—</div></div>
+      <div class="kpi"><div class="kpi-title">Average weekly volume</div><div class="kpi-value" id="kpiVolume">—</div></div>
+      <div class="kpi"><div class="kpi-title">Total dividends</div><div class="kpi-value" id="kpiDividend">—</div></div>
+      <div class="kpi"><div class="kpi-title">Weekly volatility</div><div class="kpi-value" id="kpiVolatility">—</div></div>
+      <div class="kpi"><div class="kpi-title">Max drawdown</div><div class="kpi-value" id="kpiDrawdown">—</div></div>
+      <div class="kpi"><div class="kpi-title">Number of weeks</div><div class="kpi-value" id="kpiWeeks">—</div></div>
+    </section>
+
+    <!-- This contains all five Chart.js charts. -->
+    <section class="chart-grid">
+      <!-- This chart shows adjusted close, close and moving average. -->
+      <div class="chart-card"><h3>Price & 10-Week Moving Average</h3><div class="chart-box"><canvas id="priceChart"></canvas></div></div>
+      <!-- This chart shows weekly trading volume. -->
+      <div class="chart-card"><h3>Weekly Volume</h3><div class="chart-box"><canvas id="volumeChart"></canvas></div></div>
+      <!-- This chart shows weekly percentage returns. -->
+      <div class="chart-card"><h3>Weekly Return %</h3><div class="chart-box"><canvas id="returnChart"></canvas></div></div>
+      <!-- This chart shows the difference between weekly high and low. -->
+      <div class="chart-card"><h3>Weekly High to Low Range</h3><div class="chart-box"><canvas id="rangeChart"></canvas></div></div>
+      <!-- This chart shows weekly dividends. -->
+      <div class="chart-card"><h3>Dividends</h3><div class="chart-box"><canvas id="dividendChart"></canvas></div></div>
+    </section>
+
+    <!-- This contains the last 12 weeks and CSV button. -->
+    <section class="table-card">
+      <div class="table-header"><h2>Last 12 Weeks</h2><button type="button" class="primary-btn" id="csvBtn">Download CSV</button></div>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Date</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Adjusted Close</th><th>Volume</th><th>Dividend</th><th>Weekly Return</th></tr></thead>
+          <tbody id="stockTable"><tr><td colspan="9" style="text-align:center;">Load a stock to see data.</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <!-- This is the small page footer. -->
+    <footer>For learning only. Not investment advice.</footer>
+  </div>
+
+  <!-- This contains all dashboard JavaScript. -->
+  <script>
+    "use strict";
+
+    /* This stores the important page elements in variables. */
+    const symbolInput=document.getElementById("symbol"),apiKeyInput=document.getElementById("apiKey"),rememberKey=document.getElementById("rememberKey"),toggleKey=document.getElementById("toggleKey"),loadBtn=document.getElementById("loadBtn"),refreshBtn=document.getElementById("refreshBtn"),statusEl=document.getElementById("status"),apiCountEl=document.getElementById("apiCount"),fromDate=document.getElementById("fromDate"),toDate=document.getElementById("toDate"),stockTable=document.getElementById("stockTable"),csvBtn=document.getElementById("csvBtn");
+    /* This keeps the currently loaded stock data in memory. */
+    let allData=[],filteredData=[],currentSymbol="",charts={};
+    /* This stores the local storage names used by the dashboard. */
+    const KEY_STORAGE="stockDashboardApiKey",CACHE_PREFIX="stockDashboardCache_",CALL_DATE_KEY="stockDashboardCallDate",CALL_COUNT_KEY="stockDashboardCallCount",MAX_CALLS=25;
+
+    /* This safely creates a local date string. */
+    function todayString(){const now=new Date();return `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")}`;}
+    /* This returns the current API call count and resets it on a new day. */
+    function getCallCount(){const today=todayString(),savedDate=localStorage.getItem(CALL_DATE_KEY);if(savedDate!==today){localStorage.setItem(CALL_DATE_KEY,today);localStorage.setItem(CALL_COUNT_KEY,"0");return 0}return Number(localStorage.getItem(CALL_COUNT_KEY)||0);}
+    /* This updates the API call counter shown on the page. */
+    function updateCallCount(){apiCountEl.textContent=`API calls used today: ${getCallCount()} of ${MAX_CALLS}.`;}
+    /* This adds one successful API request to today's counter. */
+    function increaseCallCount(){localStorage.setItem(CALL_COUNT_KEY,String(getCallCount()+1));localStorage.setItem(CALL_DATE_KEY,todayString());updateCallCount();}
+    /* This creates a unique local storage key for each stock and date. */
+    function cacheKey(symbol){return `${CACHE_PREFIX}${symbol.toUpperCase()}_${todayString()}`;}
+    /* This reads today's cached response for a symbol. */
+    function getCachedData(symbol){const saved=localStorage.getItem(cacheKey(symbol));if(!saved)return null;try{return JSON.parse(saved)}catch{return null}}
+    /* This saves the complete API JSON response for today's date. */
+    function saveCachedData(symbol,json){localStorage.setItem(cacheKey(symbol),JSON.stringify(json));}
+    /* This converts Alpha Vantage text numbers into real numbers. */
+    function parseNumber(value){const number=Number(value);return Number.isFinite(number)?number:0;}
+    /* This converts Alpha Vantage JSON into sorted weekly records. */
+    function parseWeeklyData(json){const series=json["Weekly Adjusted Time Series"];if(!series||typeof series!=="object")return [];return Object.entries(series).map(([date,values])=>({date,open:parseNumber(values["1. open"]),high:parseNumber(values["2. high"]),low:parseNumber(values["3. low"]),close:parseNumber(values["4. close"]),adjustedClose:parseNumber(values["5. adjusted close"]),volume:parseNumber(values["6. volume"]),dividend:parseNumber(values["7. dividend amount"]),weeklyReturn:null})).sort((a,b)=>a.date.localeCompare(b.date));}
+    /* This calculates weekly percentage returns from adjusted close. */
+    function calculateReturns(data){for(let i=0;i<data.length;i++)data[i].weeklyReturn=(i===0||data[i-1].adjustedClose===0)?null:((data[i].adjustedClose/data[i-1].adjustedClose)-1)*100;return data;}
+    /* This sets a friendly status message. */
+    function setStatus(message,type=""){statusEl.textContent=message;statusEl.className=type;}
+    /* This calculates a date exactly N months before another date. */
+    function subtractMonths(date,months){const result=new Date(date);result.setMonth(result.getMonth()-months);return result;}
+    /* This calculates a date exactly N years before another date. */
+    function subtractYears(date,years){const result=new Date(date);result.setFullYear(result.getFullYear()-years);return result;}
+    /* This converts a Date object into the format required by date inputs. */
+    function dateInputString(date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;}
+    /* This returns the first available date in the loaded dataset. */
+    function firstDataDate(){return allData.length?allData[0].date:todayString();}
+    /* This returns the last available date in the loaded dataset. */
+    function lastDataDate(){return allData.length?allData[allData.length-1].date:todayString();}
+    /* This applies one of the quick date ranges without using the API. */
+    function applyQuickRange(range){if(!allData.length)return;const lastDate=new Date(lastDataDate()+"T00:00:00");let startDate;if(range==="3M")startDate=subtractMonths(lastDate,3);else if(range==="6M")startDate=subtractMonths(lastDate,6);else if(range==="1Y")startDate=subtractYears(lastDate,1);else if(range==="3Y")startDate=subtractYears(lastDate,3);else if(range==="5Y")startDate=subtractYears(lastDate,5);else if(range==="YTD")startDate=new Date(lastDate.getFullYear(),0,1);else startDate=new Date(firstDataDate()+"T00:00:00");const earliest=new Date(firstDataDate()+"T00:00:00");if(startDate<earliest)startDate=earliest;fromDate.value=dateInputString(startDate);toDate.value=lastDataDate();document.querySelectorAll(".quick-btn").forEach(button=>button.classList.toggle("active",button.dataset.range===range));applyDateFilter();}
+    /* This creates the default one-year date filter. */
+    function setDefaultDates(){applyQuickRange("1Y");}
+    /* This filters the cached data between the selected dates. */
+    function applyDateFilter(){if(!allData.length)return;const start=fromDate.value||firstDataDate(),end=toDate.value||lastDataDate();filteredData=allData.filter(item=>item.date>=start&&item.date<=end);if(!filteredData.length){setStatus("No data is available for the selected dates.","error");clearDashboard();return}calculateReturnsForFilteredData();updateDashboard();}
+    /* This calculates returns using the preceding cached week. */
+    function calculateReturnsForFilteredData(){const firstIndex=allData.findIndex(item=>item.date===filteredData[0].date);filteredData.forEach((item,index)=>{const actualIndex=firstIndex+index;item.weeklyReturn=(actualIndex===0||allData[actualIndex-1].adjustedClose===0)?null:((item.adjustedClose/allData[actualIndex-1].adjustedClose)-1)*100;});}
+    /* This calculates the average of an array of numbers. */
+    function average(numbers){const valid=numbers.filter(Number.isFinite);return valid.length?valid.reduce((sum,value)=>sum+value,0)/valid.length:0;}
+    /* This calculates sample standard deviation. */
+    function standardDeviation(numbers){const valid=numbers.filter(Number.isFinite);if(valid.length<2)return 0;const mean=average(valid);return Math.sqrt(valid.reduce((sum,value)=>sum+Math.pow(value-mean,2),0)/(valid.length-1));}
+    /* This calculates the largest percentage fall from a previous peak. */
+    function calculateMaxDrawdown(data){if(!data.length)return 0;let peak=data[0].adjustedClose,maxDrawdown=0;data.forEach(item=>{if(item.adjustedClose>peak)peak=item.adjustedClose;if(peak>0){const drawdown=((item.adjustedClose-peak)/peak)*100;if(drawdown<maxDrawdown)maxDrawdown=drawdown;}});return maxDrawdown;}
+    /* This formats numbers shown inside the KPI cards. */
+    function formatNumber(value,decimals=2){if(!Number.isFinite(value))return "—";return value.toLocaleString("en-IN",{minimumFractionDigits:decimals,maximumFractionDigits:decimals});}
+    /* This formats large trading volumes more compactly. */
+    function formatVolume(value){if(!Number.isFinite(value))return "—";if(value>=1e9)return `${(value/1e9).toFixed(2)}B`;if(value>=1e6)return `${(value/1e6).toFixed(2)}M`;if(value>=1e3)return `${(value/1e3).toFixed(2)}K`;return formatNumber(value,0);}
+    /* This updates all KPI cards. */
+    function updateKPIs(){if(!filteredData.length)return;const first=filteredData[0],last=filteredData[filteredData.length-1],periodReturn=first.adjustedClose!==0?((last.adjustedClose/first.adjustedClose)-1)*100:0,highestHigh=Math.max(...filteredData.map(item=>item.high)),lowestLow=Math.min(...filteredData.map(item=>item.low)),avgVolume=average(filteredData.map(item=>item.volume)),totalDividends=filteredData.reduce((sum,item)=>sum+item.dividend,0),returns=filteredData.map(item=>item.weeklyReturn).filter(value=>value!==null),volatility=standardDeviation(returns),maxDrawdown=calculateMaxDrawdown(filteredData);
+      document.getElementById("kpiClose").textContent=formatNumber(last.adjustedClose);document.getElementById("kpiReturn").textContent=`${periodReturn>=0?"+":""}${formatNumber(periodReturn)}%`;document.getElementById("kpiHigh").textContent=formatNumber(highestHigh);document.getElementById("kpiLow").textContent=formatNumber(lowestLow);document.getElementById("kpiVolume").textContent=formatVolume(avgVolume);document.getElementById("kpiDividend").textContent=formatNumber(totalDividends);document.getElementById("kpiVolatility").textContent=`${formatNumber(volatility)}%`;document.getElementById("kpiDrawdown").textContent=`${formatNumber(maxDrawdown)}%`;document.getElementById("kpiWeeks").textContent=filteredData.length;document.getElementById("kpiReturn").className=`kpi-value ${periodReturn>=0?"positive":"negative"}`;document.getElementById("kpiDrawdown").className=`kpi-value ${maxDrawdown<0?"negative":"positive"}`;}
+    /* This calculates the 10-week moving average. */
+    function movingAverage(data,period=10){return data.map((item,index)=>average(data.slice(Math.max(0,index-period+1),index+1).map(row=>row.adjustedClose)));}
+    /* This creates or replaces a Chart.js chart. */
+    function makeChart(id,config){if(charts[id])charts[id].destroy();charts[id]=new Chart(document.getElementById(id),config);}
+    /* This returns common Chart.js settings. */
+    function commonChartOptions(){return{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},plugins:{legend:{position:"top"}},scales:{x:{ticks:{maxTicksLimit:10}}}};}
+    /* This draws the adjusted close, close and moving average chart. */
+    function drawPriceChart(){makeChart("priceChart",{type:"line",data:{labels:filteredData.map(item=>item.date),datasets:[{label:"Adjusted Close",data:filteredData.map(item=>item.adjustedClose),borderWidth:2,pointRadius:0,tension:.2},{label:"Close",data:filteredData.map(item=>item.close),borderWidth:1.5,pointRadius:0,tension:.2},{label:"10-Week MA",data:movingAverage(filteredData),borderWidth:2,pointRadius:0,borderDash:[5,5],tension:.2}]},options:commonChartOptions()});}
+    /* This draws the weekly volume bar chart. */
+    function drawVolumeChart(){makeChart("volumeChart",{type:"bar",data:{labels:filteredData.map(item=>item.date),datasets:[{label:"Volume",data:filteredData.map(item=>item.volume),borderWidth:0}]},options:commonChartOptions()});}
+    /* This draws weekly returns and colours positive and negative weeks. */
+    function drawReturnChart(){const values=filteredData.map(item=>item.weeklyReturn);makeChart("returnChart",{type:"bar",data:{labels:filteredData.map(item=>item.date),datasets:[{label:"Weekly Return %",data:values,backgroundColor:values.map(value=>value===null?"#cbd5e1":value>=0?"#16a34a":"#dc2626"),borderWidth:0}]},options:commonChartOptions()});}
+    /* This draws the difference between weekly high and low. */
+    function drawRangeChart(){makeChart("rangeChart",{type:"bar",data:{labels:filteredData.map(item=>item.date),datasets:[{label:"High - Low",data:filteredData.map(item=>item.high-item.low),borderWidth:0}]},options:commonChartOptions()});}
+    /* This draws weekly dividend payments. */
+    function drawDividendChart(){makeChart("dividendChart",{type:"bar",data:{labels:filteredData.map(item=>item.date),datasets:[{label:"Dividend",data:filteredData.map(item=>item.dividend),borderWidth:0}]},options:commonChartOptions()});}
+    /* This draws all five charts. */
+    function updateCharts(){drawPriceChart();drawVolumeChart();drawReturnChart();drawRangeChart();drawDividendChart();}
+    /* This updates the table with the latest 12 selected weeks. */
+    function updateTable(){const rows=filteredData.slice(-12).reverse();stockTable.innerHTML=rows.map(item=>{const returnClass=item.weeklyReturn===null?"":item.weeklyReturn>=0?"positive":"negative",returnText=item.weeklyReturn===null?"—":`${item.weeklyReturn>=0?"+":""}${formatNumber(item.weeklyReturn)}%`;return `<tr><td>${item.date}</td><td>${formatNumber(item.open)}</td><td>${formatNumber(item.high)}</td><td>${formatNumber(item.low)}</td><td>${formatNumber(item.close)}</td><td>${formatNumber(item.adjustedClose)}</td><td>${item.volume.toLocaleString("en-IN")}</td><td>${formatNumber(item.dividend)}</td><td class="${returnClass}">${returnText}</td></tr>`;}).join("");}
+    /* This updates every visible part after date filtering. */
+    function updateDashboard(){updateKPIs();updateCharts();updateTable();}
+    /* This clears the dashboard when no valid data is selected. */
+    function clearDashboard(){Object.values(charts).forEach(chart=>chart.destroy());charts={};document.querySelectorAll(".kpi-value").forEach(element=>{element.textContent="—";element.className="kpi-value";});stockTable.innerHTML=`<tr><td colspan="9" style="text-align:center;">No data available.</td></tr>`;}
+    /* This builds the Alpha Vantage request URL. */
+    function apiUrl(symbol,key){return "https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY_ADJUSTED&symbol="+encodeURIComponent(symbol)+"&apikey="+encodeURIComponent(key);}
+    /* This downloads data directly from Alpha Vantage. */
+    async function fetchFromAPI(symbol,key){if(!navigator.onLine)throw new Error("NO_INTERNET");if(getCallCount()>=MAX_CALLS)throw new Error("LOCAL_LIMIT");let response;try{response=await fetch(apiUrl(symbol,key));}catch{throw new Error("NO_INTERNET");}if(!response.ok)throw new Error("NETWORK_ERROR");let json;try{json=await response.json();}catch{throw new Error("BAD_RESPONSE");}if(json.Note||json.Information)throw new Error("API_LIMIT");if(json["Error Message"])throw new Error("INVALID_SYMBOL");if(!json["Weekly Adjusted Time Series"])throw new Error("NO_DATA");increaseCallCount();return json;}
+    /* This loads data either from today's cache or the API. */
+    async function loadStock(forceRefresh=false){const symbol=symbolInput.value.trim().toUpperCase(),key=apiKeyInput.value.trim();if(!key){setStatus("Please type an Alpha Vantage API key.","error");apiKeyInput.focus();return}if(!symbol){setStatus("Please type a stock symbol.","error");symbolInput.focus();return}if(key.toLowerCase()==="demo"&&symbol!=="IBM"){setStatus("The Alpha Vantage demo key works only for IBM.","error");return}if(rememberKey.checked)localStorage.setItem(KEY_STORAGE,key);else localStorage.removeItem(KEY_STORAGE);let json,source;try{if(!forceRefresh){const cached=getCachedData(symbol);if(cached){json=cached;source="cache";}}if(!json){setStatus("Loading data from Alpha Vantage...","");json=await fetchFromAPI(symbol,key);saveCachedData(symbol,json);source="api";}}catch(error){handleAPIError(error);return}allData=parseWeeklyData(json);if(!allData.length){setStatus("Could not find usable weekly data for that symbol.","error");return}allData=calculateReturns(allData);currentSymbol=symbol;setDefaultDates();setStatus(source==="cache"?`${symbol}: data loaded from today's cache. No API call was made.`:`${symbol}: data loaded from Alpha Vantage API.`, "success");updateCallCount();}
+    /* This converts technical API errors into simple messages. */
+    function handleAPIError(error){if(error.message==="NO_INTERNET")setStatus("No internet connection. Please check your connection and try again.","error");else if(error.message==="LOCAL_LIMIT")setStatus("The 25-call daily limit has been reached. Try cached stocks or try tomorrow.","error");else if(error.message==="API_LIMIT")setStatus("Alpha Vantage says the daily limit has been reached. Try using cached stocks or try tomorrow.","error");else if(error.message==="INVALID_SYMBOL")setStatus("Could not find that symbol","error");else if(error.message==="NETWORK_ERROR")setStatus("Could not connect to Alpha Vantage. Please check your internet connection.","error");else setStatus("Could not load the stock data. Please check the symbol and API key.","error");updateCallCount();}
+    /* This downloads the currently filtered data as a CSV file. */
+    function downloadCSV(){if(!filteredData.length){setStatus("There is no data to download.","error");return}const header=["Date","Open","High","Low","Close","Adjusted Close","Volume","Dividend","Weekly Return %"],rows=filteredData.map(item=>[item.date,item.open,item.high,item.low,item.close,item.adjustedClose,item.volume,item.dividend,item.weeklyReturn===null?"":item.weeklyReturn]),csv=[header,...rows].map(row=>row.map(value=>`"${String(value).replace(/"/g,'""')}"`).join(",")).join("\n"),blob=new Blob([csv],{type:"text/csv;charset=utf-8;"}),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=`${currentSymbol||"stock"}_filtered_data.csv`;document.body.appendChild(link);link.click();link.remove();URL.revokeObjectURL(url);}
+    /* This loads a remembered API key when the page opens. */
+    function loadRememberedKey(){const savedKey=localStorage.getItem(KEY_STORAGE);if(savedKey){apiKeyInput.value=savedKey;rememberKey.checked=true;}}
+    /* This shows or hides the API key. */
+    toggleKey.addEventListener("click",()=>{if(apiKeyInput.type==="password"){apiKeyInput.type="text";toggleKey.textContent="Hide"}else{apiKeyInput.type="password";toggleKey.textContent="Show"}});
+    /* These chips only fill the symbol box and never call the API. */
+    document.querySelectorAll(".chip").forEach(chip=>chip.addEventListener("click",()=>{symbolInput.value=chip.dataset.symbol;symbolInput.focus();setStatus(`${chip.dataset.symbol} selected. Click Load to get data.`,"");}));
+    /* This loads data using cache whenever today's cache exists. */
+    loadBtn.addEventListener("click",()=>loadStock(false));
+    /* This always makes a new API call. */
+    refreshBtn.addEventListener("click",()=>loadStock(true));
+    /* These quick buttons only filter the data already in memory. */
+    document.querySelectorAll(".quick-btn").forEach(button=>button.addEventListener("click",()=>applyQuickRange(button.dataset.range)));
+    /* These date inputs filter the current data without calling the API. */
+    fromDate.addEventListener("change",()=>{document.querySelectorAll(".quick-btn").forEach(button=>button.classList.remove("active"));applyDateFilter();});
+    toDate.addEventListener("change",()=>{document.querySelectorAll(".quick-btn").forEach(button=>button.classList.remove("active"));applyDateFilter();});
+    /* This downloads CSV without making an API request. */
+    csvBtn.addEventListener("click",downloadCSV);
+    /* This gives a friendly message if Chart.js did not load. */
+    window.addEventListener("load",()=>{loadRememberedKey();updateCallCount();if(typeof Chart==="undefined")setStatus("Chart.js failed to load. Check your internet connection and reload the page.","error");});
+    /* This updates the status if the browser loses internet access. */
+    window.addEventListener("offline",()=>setStatus("You are offline. Cached stock data can still be viewed.","error"));
+  </script>
+</body>
+</html>
